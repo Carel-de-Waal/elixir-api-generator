@@ -1,0 +1,181 @@
+mix archive.uninstall phx_new
+
+mix archive.install https://github.com/phoenixframework/archives/raw/master/phx_new.ez
+
+PREREQ:
+already have elixir + phoenix + postgres (username: postgres, password: postgres)
+
+
+START HERE:
+Ask user for app name:
+
+mix phx.new example-app --app example_app --module ExampleApp --no-brunch --no-html
+
++y
+
+cd example-app
+(figure out how to change the username and password in config/dev + config/prod file)
+mix ecto.create
+
+(In dev.exs change "debug_errors: true" to "debug_errors: false")
+
+
+mix phx.gen.context Auth User users email:string:unique is_active:boolean
+(update first migration with:
+####
+  def change do
+    create table(:users) do
+      add(:email, :string, null: false)
+      add(:password_hash, :string)
+      add(:is_active, :boolean, default: false, null: false)
+
+      timestamps()
+    end
+
+    create(unique_index(:users, [:email]))
+  end
+####)
+
+mix ecto.migrate
+
+(Add deps to mix: {:bcrypt_elixir, "~> 1.0"} {:corsica, "~> 1.0"})
+mix deps.get
+
+(Add to endpoint.ex:
+###
+ plug(
+    Corsica,
+    origins: "http://localhost:8080",
+    log: [rejected: :error, invalid: :warn, accepted: :debug],
+    allow_headers: ["content-type"],
+    allow_credentials: true
+  )
+## 
+before plug ExampleAppWeb.Router
+)
+
+(Add to terst.exs: config :bcrypt_elixir, :log_rounds, 4 )
+
+(Update lib/my_app/auth/user.ex:
+####
+defmodule MyApp.Auth.User do
+  use Ecto.Schema
+  import Ecto.Changeset
+
+  schema "users" do
+    field(:email, :string)
+    field(:is_active, :boolean, default: false)
+    field(:password, :string, virtual: true)
+    field(:password_hash, :string)
+
+    timestamps()
+  end
+
+  @doc false
+  def changeset(user, attrs) do
+    user
+    |> cast(attrs, [:email, :is_active, :password])
+    |> validate_required([:email, :is_active, :password])
+    |> unique_constraint(:email)
+    |> put_password_hash()
+  end
+
+  defp put_password_hash(
+         %Ecto.Changeset{
+           valid?: true, changes: %{password: password}
+         } = changeset
+       ) do
+    change(changeset, password_hash: Bcrypt.hash_pwd_salt(password))
+  end
+
+  defp put_password_hash(changeset) do
+    changeset
+  end
+end
+####
+
+mix phx.gen.json Auth User users email:string password:string is_active:boolean --no-schema --no-context
+
+(Add route for above in router.ex:
+resources "/users", UserController, except: [:new, :edit])
+
+(REmove password from user_view.ex:
+  def render("user.json", %{user: user}) do
+    %{id: user.id, email: user.email, is_active: user.is_active}
+  end)
+
+iex -S mix phx.server
+(Ask user for username and password)
+ExampleApp.Auth.create_user(%{email: "asd@asd.com", password: "qwerty"})
+
+(Add to auth.ex:
+###
+def authenticate_user(email, password) do
+    query = from(u in User, where: u.email == ^email)
+    query |> Repo.one() |> verify_password(password)
+  end
+
+  defp verify_password(nil, _) do
+    # Perform a dummy check to make user enumeration more difficult
+    Bcrypt.no_user_verify()
+    {:error, "Wrong email or password"}
+  end
+
+  defp verify_password(user, password) do
+    if Bcrypt.verify_pass(password, user.password_hash) do
+      {:ok, user}
+    else
+      {:error, "Wrong email or password"}
+    end
+  end
+###
+
+(Add to user controller:
+###
+ def sign_in(conn, %{"email" => email, "password" => password}) do
+    case ExampleApp.Auth.authenticate_user(email, password) do
+      {:ok, user} ->
+        conn
+        |> put_status(:ok)
+        |> render(ExampleAppWeb.UserView, "sign_in.json", user: user)
+
+      {:error, message} ->
+        conn
+        |> put_status(:unauthorized)
+        |> render(ExampleAppWeb.ErrorView, "401.json", message: message)
+    end
+  end
+###)
+
+(Add to user_view.ex:
+###
+def render("sign_in.json", %{user: user}) do
+    %{
+      data: %{
+        user: %{
+          id: user.id,
+          email: user.email
+        }
+      }
+    }
+  end
+###)
+
+(Add to error_view.ex:
+###
+def render("401.json", %{message: message}) do
+    %{errors: %{detail: message}}
+  end
+  end
+###)
+
+
+
+
+
+
+
+
+
+
+
