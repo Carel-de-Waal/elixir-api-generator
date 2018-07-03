@@ -1,0 +1,16 @@
+Generating a new app:
+
+cp -rf example-app *new-app-name*
+
+find ./*new-app-name* -exec sed -i "s/ExampleApp/*NewAppName*/g" {} \;
+find ./*new-app-name* -exec sed -i "s/example_app/*new_app_name*/g" {} \;
+cd ./*new-app-name*
+mix ecto.create
+mix ecto.migrate
+
+
+
+
+
+
+
