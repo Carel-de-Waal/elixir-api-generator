@@ -39,6 +39,16 @@ filename = "test-models.sql"
 `cp -rf example-app #{app_name}`
 
 thread = Thread.new do
+  system("find ./#{app_name}/ -execdir rename 's/example-app/"+app_name+"/' '{}' \+")
+end
+thread.join
+
+thread = Thread.new do
+  system("find ./#{app_name}/ -execdir rename 's/example_app/"+app_name+"/' '{}' \+")
+end
+thread.join
+
+thread = Thread.new do
   system("find ./#{app_name} -type f | xargs sed -i \"s/ExampleApp/"+app_name_camel+"/g\"")
 end
 thread.join
@@ -97,6 +107,17 @@ File.open(File.dirname(__FILE__) + "/" + filename, "r") do |f|
     end
   end
 end
+
+thread = Thread.new do
+  system("mix ecto.create")
+end
+thread.join
+
+thread = Thread.new do
+  system("mix ecto.migrate")
+end
+thread.join
+
 
 
 
