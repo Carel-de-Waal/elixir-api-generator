@@ -8,6 +8,11 @@ class String
     gsub(/__+/, '_').
     downcase
   end
+
+  def camel_case
+    return self if self !~ /_/ && self =~ /[A-Z]+.*/
+    split('_').map{|e| e.capitalize}.join
+  end
 end
 
 def elixir_type(type)
@@ -60,20 +65,23 @@ File.open(File.dirname(__FILE__) + "/" + filename, "r") do |f|
     if(/CREATE TABLE.*/.match(line))
       table_name = line[/`[a-zA-Z]+`.`[a-zA-Z]+`/].tr("`","").split(".").last
       puts  "tablename: " + table_name
-      gen_str = "mix phx.gen.json API " +" "+ table_name.capitalize.chop + table_name
+      model_name = table_name.camel_case
+      gen_str = "mix phx.gen.json API #{model_name} #{table_name}"
       in_table = true
       table_end_bracket_count = 1
       next
     end
 
     if(in_table)
-      entry = line[/`[a-zA-Z]+` [A-Z0-9()]+ /].to_s.strip
+      entry = line[/`[a-zA-Z_]+` [A-Z0-9()]+ /].to_s.strip
       if(entry != "")
-        col_raw = entry[/`[a-zA-Z]+`/]
+        col_raw = entry[/`[a-zA-Z_]+`/]
         col = col_raw.tr("`","")
         type = entry.tr(col_raw, "").strip
-        puts "\t col: " + col + ", type: " + type
-        gen_str += " "+col + ":" + elixir_type(type)
+        if( col != "id" )
+          puts "\t col: " + col + ", type: " + type
+          gen_str += " "+col + ":" + elixir_type(type)
+        end
       end
       table_end_bracket_count += line.count("(")
       table_end_bracket_count -= line.count(")")
