@@ -25,6 +25,19 @@ def elixir_type(type)
   end
 end
 
+def add_route(file_path, new_route_line)
+  puts "add_route"
+  File.open(file_path, "r+") do |f|
+    f.each_line do |line|
+      puts "line: "+line
+      if(/pipe_through [:api, :api_auth]*/.match(line))
+        puts "new_route_line: "+new_route_line
+        f.puts new_route_line
+      end
+    end
+  end
+end
+
 puts "App name in CamelCase:"
 # app_name_camel = gets
 app_name_camel = "MakerMarket"
@@ -63,13 +76,18 @@ thread = Thread.new do
 end
 thread.join
 
-puts "#### GO ####"
+thread = Thread.new do
+  system("mv -f ./#{app_name}/lib/maker_market_web/views/changeset_view.ex ./changeset_view.ex.backup && mv -f ./#{app_name}/lib/maker_market_web/controllers/fallback_controller.ex ./fallback_controller.ex.backup")
+end
+thread.join
 
+puts "#### GO ####"
+file_path = File.dirname(__FILE__) + "/"
 in_table = false
 table_end_bracket_count = 0
 gen_str = ""
-
-File.open(File.dirname(__FILE__) + "/" + filename, "r") do |f|
+table_name = ""
+File.open(file_path + filename, "r") do |f|
   f.each_line do |line|
 
     if(/CREATE TABLE.*/.match(line))
@@ -96,27 +114,42 @@ File.open(File.dirname(__FILE__) + "/" + filename, "r") do |f|
       table_end_bracket_count += line.count("(")
       table_end_bracket_count -= line.count(")")
       if(table_end_bracket_count==0)
+        puts "End of table"
         thread = Thread.new do
           system("cd ./#{app_name} && #{gen_str}")
         end
         thread.join
+        add_route(file_path + "#{app_name}/lib/#{app_name}_web/router.ex", "resources \"/#{table_name}\", #{table_name.camel_case}Controller, except: [:new, :edit]")
+        thread = Thread.new do
+          cmd = "rm ./#{app_name}/lib/maker_market_web/views/changeset_view.ex"
+          cmd += "&& rm ./#{app_name}/lib/maker_market_web/controllers/fallback_controller.ex"
+          system(cmd)
+        end
+        thread.join
+
         gen_str = ""
+        table_name = ""
         in_table=false
-        puts "End of table"
       end
     end
   end
 end
 
 thread = Thread.new do
-  system("mix ecto.create")
+  cmd = "cp ./changeset_view.ex.backup ./#{app_name}/lib/maker_market_web/views/changeset_view.ex"
+  cmd += " && rm -f ./changeset_view.ex.backup"
+  cmd += " && cp ./fallback_controller.ex.backup ./#{app_name}/lib/maker_market_web/controllers/fallback_controller.ex"
+  cmd += " && rm -f ./fallback_controller.ex.backup"
+  system(cmd )
 end
 thread.join
 
+
 thread = Thread.new do
-  system("mix ecto.migrate")
+  system("cd ./#{app_name} && mix ecto.create && mix ecto.migrate")
 end
 thread.join
+
 
 
 
