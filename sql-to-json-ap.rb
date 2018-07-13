@@ -26,6 +26,19 @@ class String
    end
  end
 
+ def foreign_key_col_name(line)
+  foreign_key_line = line.match(/FOREIGN KEY \((`[a-zA-Z_]+`)\)/i)
+  if(foreign_key_line)
+    return foreign_key_line.captures.first.tr("`","")
+  else
+    return nil
+  end
+ end
+
+ def forgein_key_tablename(line)
+  line.match(/REFERENCES `[a-zA-Z_]+`.`([a-zA-Z_]+)` .*/i).captures.first.tr("`","")
+ end
+
  def add_route(file_path, new_route_line)
    puts "add_route"
    output = StringIO.new
@@ -101,6 +114,7 @@ class String
  table_end_bracket_count = 0
  gen_str = ""
  table_name = ""
+ next_line_forgein_key_name = nil
  File.open(file_path + filename, "r") do |f|
    f.each_line do |line|
 
@@ -120,11 +134,19 @@ class String
          col_raw = entry[/`[a-zA-Z_]+`/]
          col = col_raw.tr("`","")
          type = entry.tr(col_raw, "").strip
-         if( col != "id" )
+         if( col != "id" && !col.include?("_id"))
            puts "\t col: " + col + ", type: " + type
            gen_str += " "+col + ":" + elixir_type(type)
          end
        end
+       if(next_line_forgein_key_name)
+        forgein_key_tablename = forgein_key_tablename(line)
+        gen_str += " #{next_line_forgein_key_name}:references:#{forgein_key_tablename}"
+        next_line_forgein_key_name = nil
+       else
+        next_line_forgein_key_name = foreign_key_col_name(line)
+       end
+
        table_end_bracket_count += line.count("(")
        table_end_bracket_count -= line.count(")")
        if(table_end_bracket_count==0)
@@ -161,7 +183,7 @@ class String
 
  create_user_in_seed(app_name.camel_case, file_path + "#{app_name}/priv/repo/seeds.exs", "admin", "12345678")
  thread = Thread.new do
-   system("cd ./#{app_name} && mix ecto.create && mix ecto.migrate")
+   system("cd ./#{app_name} && mix ecto.create && mix ecto.migrate && mix run priv/repo/seeds.exs")
  end
  thread.join
 
