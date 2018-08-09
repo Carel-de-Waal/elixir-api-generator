@@ -1,5 +1,6 @@
 #!/usr/bin/ruby
 require 'stringio'
+require 'active_support/all'
 class String
   def snakecase
      gsub(/([A-Z]+)([A-Z][a-z])/,'\1_\2').
@@ -66,6 +67,7 @@ class String
  end
 
  puts "App name in CamelCase:"
+ "Bugs".singularize
  # app_name_camel = gets
  app_name_camel = "MakerMarket"
  puts "app_name_camel: #{app_name_camel}"
@@ -74,7 +76,7 @@ class String
 
  puts "Sql filename of file to import:"
  #filename = gets
- filename = "test-models.sql"
+ filename = "maker-market.sql"
 
  `cp -rf example-app #{app_name}`
 
@@ -119,9 +121,10 @@ class String
    f.each_line do |line|
 
      if(/CREATE TABLE.*/.match(line))
-       table_name = line[/`[a-zA-Z]+`.`[a-zA-Z]+`/].tr("`","").split(".").last
+       table_name = line[/`[a-zA-Z_]+`.`[a-zA-Z_]+`/].tr("`","").split(".").last
        puts  "tablename: " + table_name
-       model_name = table_name.camel_case
+       model_name = table_name.camel_case.singularize
+       next if(table_name=="users")
        gen_str = "mix phx.gen.json API #{model_name} #{table_name}"
        in_table = true
        table_end_bracket_count = 1
@@ -156,7 +159,7 @@ class String
          end
          thread.join
          sleep 1
-         add_route(file_path + "#{app_name}/lib/#{app_name}_web/router.ex", "  resources \"/#{table_name}\", #{table_name.camel_case}Controller, except: [:new, :edit]")
+         add_route(file_path + "#{app_name}/lib/#{app_name}_web/router.ex", "  resources \"/#{table_name}\", #{table_name.camel_case.singularize}Controller, except: [:new, :edit]")
          thread = Thread.new do
            cmd = "rm ./#{app_name}/lib/maker_market_web/views/changeset_view.ex"
            cmd += "&& rm ./#{app_name}/lib/maker_market_web/controllers/fallback_controller.ex"
