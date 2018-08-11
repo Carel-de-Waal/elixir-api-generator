@@ -64,6 +64,32 @@ class String
    end
  end
 
+ def add_association(file_path, app_name_camel)
+  puts "add_association"
+  output = StringIO.new
+
+  File.foreach(file_path) do |line|
+    if /field :([a-zA-z_]+)_id, :id/.match(line)
+      model_name = /field :([a-zA-z_]+)_id, :id/.match(line)[1]
+      if(model_name == "user")
+        new_ass_line = "    belongs_to :user, Auth.User"
+      else
+        new_ass_line = "    belongs_to :#{model_name}, #{app_name_camel}.Api.#{model_name.camel_case}"
+      end
+      #output.puts line
+      output.puts new_ass_line
+    else
+      output << line
+    end
+  end
+
+  output.rewind
+
+  File.open(file_path, 'w') do |f|
+    f.write output.read
+  end
+end
+
  def create_user_in_seed(app_name, seed_file_path, username, password)
   File.open(seed_file_path, 'a') do |f|
     f.puts  "#{app_name}.Auth.create_user(%{email: \"#{username}\", password: \"#{password}\"})"
@@ -71,7 +97,6 @@ class String
  end
 
  puts "App name in CamelCase:"
- "Bugs".singularize
  # app_name_camel = gets
  app_name_camel = "MakerMarket"
  puts "app_name_camel: #{app_name_camel}"
@@ -165,6 +190,7 @@ class String
          thread.join
          sleep 1
          add_route(file_path + "#{app_name}/lib/#{app_name}_web/router.ex", "  resources \"/#{table_name}\", #{table_name.camel_case.singularize}Controller, except: [:new, :edit]")
+         add_association(file_path + "#{app_name}/lib/#{app_name}/api/#{table_name.singularize}.ex", app_name.camel_case.singularize)
          thread = Thread.new do
            cmd = "rm ./#{app_name}/lib/maker_market_web/views/changeset_view.ex"
            cmd += "&& rm ./#{app_name}/lib/maker_market_web/controllers/fallback_controller.ex"
