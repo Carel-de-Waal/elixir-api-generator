@@ -20,10 +20,14 @@ class String
  def elixir_type(type)
    if type.include?("INT")
      return "integer"
+   elsif type.include?("DECIMAL")
+     return "decimal"
    elsif type.include?("VARCHAR")
        return "text"
    elsif type.include?("DATETIME")
      return "utc_datetime"
+   elsif type.include?("BOOL")
+     return "boolean"
    end
  end
 
@@ -155,6 +159,7 @@ class String
        if(table_end_bracket_count==0)
          puts "End of table"
          thread = Thread.new do
+          puts gen_str
            system("cd ./#{app_name} && #{gen_str}")
          end
          thread.join
