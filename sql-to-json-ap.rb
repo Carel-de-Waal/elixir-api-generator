@@ -64,20 +64,192 @@ class String
    end
  end
 
- def add_association(file_path, app_name_camel)
+ def add_association(file_path, app_name,table_name)
   puts "add_association"
   output = StringIO.new
-
+  app_name_camel = app_name.camel_case.singularize
   File.foreach(file_path) do |line|
     if /field :([a-zA-z_]+)_id, :id/.match(line)
       model_name = /field :([a-zA-z_]+)_id, :id/.match(line)[1]
       if(model_name == "user")
         new_ass_line = "    belongs_to :user, Auth.User"
+        has_many_file_path = File.dirname(__FILE__) + "/" + "#{app_name}/lib/#{app_name}/auth/user.ex"
       else
         new_ass_line = "    belongs_to :#{model_name}, #{app_name_camel}.Api.#{model_name.camel_case}"
+        has_many_file_path = File.dirname(__FILE__) + "/" + "#{app_name}/lib/#{app_name}/api/#{model_name}.ex"
       end
-      #output.puts line
       output.puts new_ass_line
+      add_has_many(has_many_file_path, app_name_camel, table_name.singularize)
+    else
+      output << line
+    end
+  end
+
+  output.rewind
+
+  File.open(file_path, 'w') do |f|
+    f.write output.read
+  end
+end
+
+def add_has_many(file_path, app_name_camel, model_name)
+  puts "add_has_many"
+  output = StringIO.new
+
+  File.foreach(file_path) do |line|
+    if /schema "[a-zA-Z_]+" do/.match(line)
+      if(model_name == "user")
+        new_ass_line = "    has_many :users, Auth.User"
+      else
+        new_ass_line = "    has_many :#{model_name.pluralize}, #{app_name_camel}.API.#{model_name.camel_case}"
+      end
+      output.puts line
+      output.puts new_ass_line
+    else
+      output << line
+    end
+  end
+
+  output.rewind
+
+  File.open(file_path, 'w') do |f|
+    f.write output.read
+  end
+end
+
+def update_controller_one(file_path, table_name)
+  puts "update_controller_one"
+  output = StringIO.new
+  File.foreach(file_path) do |line|
+    if /.*#{Regexp.escape(table_name)} = [a-zA-Z_]+\.list_#{Regexp.escape(table_name)}\(\)/.match(line)
+      if(table_name == "users")
+        new_line = "    page = Auth.list_users(params[\"page\"] || 1)"
+      else
+        new_line = "    page = API.list_#{table_name}(params[\"page\"] || 1)"
+      end
+      output.puts new_line
+    else
+      output << line
+    end
+  end
+
+  output.rewind
+
+  File.open(file_path, 'w') do |f|
+    f.write output.read
+  end
+end
+
+def update_controller_two(file_path, table_name)
+  puts "update_controller_two"
+  output = StringIO.new
+  File.foreach(file_path) do |line|
+    if /.*render\(conn, "index.json", #{Regexp.escape(table_name)}: #{Regexp.escape(table_name)}\)/.match(line)
+      new_line = "    render(conn, \"index.json\", #{table_name}: page.entries, page_info: Map.delete(page, :entries))"
+      output.puts new_line
+    else
+      output << line
+    end
+  end
+
+  output.rewind
+
+  File.open(file_path, 'w') do |f|
+    f.write output.read
+  end
+end
+
+def update_controller_three(file_path, table_name)
+  puts "update_controller_three"
+  output = StringIO.new
+  File.foreach(file_path) do |line|
+    if /.*def index\(conn, _params\) do/.match(line)
+      new_line = "def index(conn, params) do"
+      output.puts new_line
+    else
+      output << line
+    end
+  end
+
+  output.rewind
+
+  File.open(file_path, 'w') do |f|
+    f.write output.read
+  end
+end
+
+def update_context(file_path, table_name)
+  puts "update_context"
+  output = StringIO.new
+  model_name = table_name.singularize.camel_case
+  File.foreach(file_path) do |line|
+    if /.*def list_#{Regexp.escape(table_name)} do/.match(line)
+      new_line = " def list_#{table_name}(page) do"
+      output.puts new_line
+    else
+      output << line
+    end
+  end
+
+  output.rewind
+
+  File.open(file_path, 'w') do |f|
+    f.write output.read
+  end
+end
+
+def update_context_two(file_path, table_name)
+  puts "update_context_two"
+  output = StringIO.new
+  model_name = table_name.singularize.camel_case
+  File.foreach(file_path) do |line|
+    if /.*Repo\.all\(#{Regexp.escape(model_name)}\)/.match(line)
+      if(table_name == "users")
+        new_line = " User |> Repo.paginate(page: page)"
+      else
+        new_line = " #{model_name} |> Repo.paginate(page: page)"
+      end
+      output.puts new_line
+    else
+      output << line
+    end
+  end
+
+  output.rewind
+
+  File.open(file_path, 'w') do |f|
+    f.write output.read
+  end
+end
+
+def update_view(file_path, table_name)
+  puts "update_view"
+  output = StringIO.new
+  model_name = table_name.singularize.camel_case
+  File.foreach(file_path) do |line|
+    if /.*def render\("index\.json",.*do/.match(line)
+      new_line = "  def render(\"index.json\", %{#{table_name}: #{table_name}, page_info: page_info}) do"
+      output.puts new_line
+    else
+      output << line
+    end
+  end
+
+  output.rewind
+
+  File.open(file_path, 'w') do |f|
+    f.write output.read
+  end
+end
+
+def update_view_two(file_path, table_name)
+  puts "update_view_two"
+  output = StringIO.new
+  model_name = table_name.singularize.camel_case
+  File.foreach(file_path) do |line|
+    if /.*%{data: render_many\(#{Regexp.escape(table_name)}, #{Regexp.escape(model_name)}View, "#{Regexp.escape(table_name.singularize)}\.json"\)}/.match(line)
+      new_line = "  %{#{table_name}: render_many(#{table_name}, #{model_name}View, \"#{table_name.singularize}.json\"), page_info: page_info}"
+      output.puts new_line
     else
       output << line
     end
@@ -153,7 +325,17 @@ end
        table_name = line[/`[a-zA-Z_]+`.`[a-zA-Z_]+`/].tr("`","").split(".").last
        puts  "tablename: " + table_name
        model_name = table_name.camel_case.singularize
-       next if(table_name=="users")
+       if(table_name=="users")
+        #Add pagination(Scriviner) to controller and view
+        update_controller_one(file_path + "#{app_name}/lib/#{app_name}_web/controllers/user_controller.ex",table_name)
+        update_controller_two(file_path + "#{app_name}/lib/#{app_name}_web/controllers/user_controller.ex",table_name)
+        update_controller_three(file_path + "#{app_name}/lib/#{app_name}_web/controllers/user_controller.ex",table_name)
+        update_context(file_path + "#{app_name}/lib/#{app_name}/auth/auth.ex",table_name)
+        update_context_two(file_path + "#{app_name}/lib/#{app_name}/auth/auth.ex",table_name)
+        update_view(file_path +  "#{app_name}/lib/#{app_name}_web/views/user_view.ex",table_name)
+        update_view_two(file_path +  "#{app_name}/lib/#{app_name}_web/views/user_view.ex",table_name)
+        next
+       end
        gen_str = "mix phx.gen.json API #{model_name} #{table_name}"
        in_table = true
        table_end_bracket_count = 1
@@ -190,7 +372,20 @@ end
          thread.join
          sleep 1
          add_route(file_path + "#{app_name}/lib/#{app_name}_web/router.ex", "  resources \"/#{table_name}\", #{table_name.camel_case.singularize}Controller, except: [:new, :edit]")
-         add_association(file_path + "#{app_name}/lib/#{app_name}/api/#{table_name.singularize}.ex", app_name.camel_case.singularize)
+         add_association(file_path + "#{app_name}/lib/#{app_name}/api/#{table_name.singularize}.ex", app_name,table_name)
+         #Add pagination(Scriviner) to controller and view
+         update_controller_one(file_path + "#{app_name}/lib/#{app_name}_web/controllers/#{table_name.singularize}_controller.ex",table_name)
+         update_controller_two(file_path + "#{app_name}/lib/#{app_name}_web/controllers/#{table_name.singularize}_controller.ex",table_name)
+         update_controller_three(file_path + "#{app_name}/lib/#{app_name}_web/controllers/#{table_name.singularize}_controller.ex",table_name)
+         if(table_name == "users")
+          update_context(file_path + "#{app_name}/lib/#{app_name}/auth/auth.ex",table_name)
+          update_context_two(file_path + "#{app_name}/lib/#{app_name}/auth/auth.ex",table_name)
+         else
+          update_context(file_path + "#{app_name}/lib/#{app_name}/api/api.ex",table_name)
+          update_context_two(file_path + "#{app_name}/lib/#{app_name}/api/api.ex",table_name)
+         end
+         update_view(file_path +  "#{app_name}/lib/#{app_name}_web/views/#{table_name.singularize}_view.ex",table_name)
+         update_view_two(file_path +  "#{app_name}/lib/#{app_name}_web/views/#{table_name.singularize}_view.ex",table_name)
          thread = Thread.new do
            cmd = "rm ./#{app_name}/lib/maker_market_web/views/changeset_view.ex"
            cmd += "&& rm ./#{app_name}/lib/maker_market_web/controllers/fallback_controller.ex"

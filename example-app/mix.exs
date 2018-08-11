@@ -40,7 +40,8 @@ defmodule ExampleApp.Mixfile do
       {:gettext, "~> 0.11"},
       {:cowboy, "~> 1.0"},
       {:bcrypt_elixir, "~> 1.0"},
-      {:corsica, "~> 1.0"}
+      {:corsica, "~> 1.0"},
+      {:scrivener_ecto, "~> 1.0"}
     ]
   end
 

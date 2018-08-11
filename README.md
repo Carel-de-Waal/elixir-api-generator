@@ -13,21 +13,16 @@ Sign in:
 Query:
  curl -H "Content-Type: application/json" -X GET http://localhost:4000/api/users -c cookies.txt -b cookies.txt -i
 
- Adding associations
- Update models:
-  user has many search_queries example:
+ Force forgein relations on create:
+  In changeset add association id:
+    validate_required([:query, :user_id])
 
-  In search_queries.ex
-    #field :user_id, :id
-    belongs_to :user, Auth.User
-  then in user.ex add in schema:
-    has_many :search_queries, MakerMarket.API.SearchQuery
-
-  To display assoc in json:
+ Rendering associations in JSON response:
+  In context:
     def list_users do
       Repo.all(User) |> Repo.preload(:search_queries)
     end
-
+  In views:
     def render("user.json", %{user: user}) do
       %{id: user.id,
         email: user.email,
