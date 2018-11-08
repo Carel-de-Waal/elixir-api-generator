@@ -1,16 +1,27 @@
-# elixir-api-generator
+# Elixir Api Generator
 
-Use:
-  gem install activesupport
-  copy new [name].sql file to ./
-  ruby sql-to-json-ap.rb
-  cd [name]
-  mix phx.server
+##Prerequisites
 
-Sign in:
+Install Elixir
+Install Phoenix
+Install Ruby
+gem install activesupport
+
+##Using the script:
+
+1. Create a db model in MySQL workbench and export to sql create file and copy that file to this folder
+2. Edit  sql-to-json-ap.rb and update:
+  app_name_camel = "AppName" (App name that you want)
+  filename = "generated.sql" (file name form 1)
+
+3. Run ruby sql-to-json-ap.rb
+4. cd into app folder
+5. mix phx.server
+
+##Sign in:
  curl -H "Content-Type: application/json" -X POST -d '{"email":"admin","password":"12345678"}' http://localhost:4000/api/users/sign_in -c cookies.txt -b cookies.txt
 
-Query:
+##Query:
  curl -H "Content-Type: application/json" -X GET http://localhost:4000/api/users -c cookies.txt -b cookies.txt -i
 
  Force forgein relations on create:

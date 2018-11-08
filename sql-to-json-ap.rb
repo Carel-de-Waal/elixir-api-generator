@@ -1,6 +1,11 @@
 #!/usr/bin/ruby
 require 'stringio'
 require 'active_support/all'
+
+
+app_name_camel = "RasaHiguru"
+filename = "rasa-higuru.sql"
+
 class String
   def snakecase
      gsub(/([A-Z]+)([A-Z][a-z])/,'\1_\2').
@@ -269,15 +274,13 @@ end
  end
 
  puts "App name in CamelCase:"
- # app_name_camel = gets
- app_name_camel = "MakerMarket"
+ #app_name_camel = gets.chop
  puts "app_name_camel: #{app_name_camel}"
  app_name = app_name_camel.snakecase
  puts "app_name: #{app_name}"
 
- puts "Sql filename of file to import:"
- #filename = gets
- filename = "maker-market.sql"
+ #puts "Sql filename of file to import: (ex test.sql)"
+ #filename = gets.chop
 
  `cp -rf example-app #{app_name}`
 
@@ -307,12 +310,13 @@ end
  thread.join
 
  thread = Thread.new do
-   system("mv -f ./#{app_name}/lib/maker_market_web/views/changeset_view.ex ./changeset_view.ex.backup && mv -f ./#{app_name}/lib/maker_market_web/controllers/fallback_controller.ex ./fallback_controller.ex.backup")
+   system("mv -f ./#{app_name}/lib/#{app_name}_web/views/changeset_view.ex ./changeset_view.ex.backup && mv -f ./#{app_name}/lib/#{app_name}_web/controllers/fallback_controller.ex ./fallback_controller.ex.backup")
  end
  thread.join
 
  puts "#### GO ####"
  file_path = File.dirname(__FILE__) + "/"
+ `ls #{file_path}`
  in_table = false
  table_end_bracket_count = 0
  gen_str = ""
@@ -387,8 +391,8 @@ end
          update_view(file_path +  "#{app_name}/lib/#{app_name}_web/views/#{table_name.singularize}_view.ex",table_name)
          update_view_two(file_path +  "#{app_name}/lib/#{app_name}_web/views/#{table_name.singularize}_view.ex",table_name)
          thread = Thread.new do
-           cmd = "rm ./#{app_name}/lib/maker_market_web/views/changeset_view.ex"
-           cmd += "&& rm ./#{app_name}/lib/maker_market_web/controllers/fallback_controller.ex"
+           cmd = "rm ./#{app_name}/lib/#{app_name}_web/views/changeset_view.ex"
+           cmd += "&& rm ./#{app_name}/lib/#{app_name}_web/controllers/fallback_controller.ex"
            system(cmd)
          end
          thread.join
@@ -402,9 +406,9 @@ end
  end
 
  thread = Thread.new do
-   cmd = "cp ./changeset_view.ex.backup ./#{app_name}/lib/maker_market_web/views/changeset_view.ex"
+   cmd = "cp ./changeset_view.ex.backup ./#{app_name}/lib/#{app_name}_web/views/changeset_view.ex"
    cmd += " && rm -f ./changeset_view.ex.backup"
-   cmd += " && cp ./fallback_controller.ex.backup ./#{app_name}/lib/maker_market_web/controllers/fallback_controller.ex"
+   cmd += " && cp ./fallback_controller.ex.backup ./#{app_name}/lib/#{app_name}_web/controllers/fallback_controller.ex"
    cmd += " && rm -f ./fallback_controller.ex.backup"
    system(cmd )
  end
